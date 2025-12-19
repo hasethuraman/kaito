@@ -277,6 +277,11 @@ func GetBaseImageName() string {
 	return utils.GetPresetImageName(presetObj.Registry, presetObj.Name, presetObj.Tag)
 }
 
+func GetBaseImageNameForRunai() string {
+	presetObj := metadata.MustGet("base")
+	return utils.GetPresetImageNameForRunai(presetObj.Registry, presetObj.Name, presetObj.Tag)
+}
+
 func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int) func(*generator.WorkspaceGeneratorContext, *corev1.PodSpec) error {
 	return func(ctx *generator.WorkspaceGeneratorContext, spec *corev1.PodSpec) error {
 		configVolume, err := resources.EnsureConfigOrCopyFromDefault(ctx.Ctx, ctx.KubeClient,
@@ -336,6 +341,7 @@ func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int) func(*gene
 		inferenceParam := ctx.Model.GetInferenceParameters().DeepCopy()
 		runtimeName := v1beta1.GetWorkspaceRuntimeName(ctx.Workspace)
 
+		imageName := GetBaseImageName()
 		// Calculate max-model-len for runtime context
 		maxModelLen := 2048 // Default value
 		if ctx.Workspace.Inference != nil {
@@ -352,6 +358,9 @@ func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int) func(*gene
 						maxModelLen = computeMaxModelLen(presetParams, gpuConfig, numNodes)
 						klog.Infof("[RuntimeContext] workspace=%s using computed max-model-len=%d (gpuConfig=%+v, numNodes=%d)", ctx.Workspace.Name, maxModelLen, *gpuConfig, numNodes)
 						//}
+					}
+					if presetParams.LoadFormat == VLLMLoadFormatRunAiStreamer {
+						imageName = GetBaseImageNameForRunai()
 					}
 				}
 			}
@@ -386,7 +395,7 @@ func GenerateInferencePodSpec(gpuConfig *sku.GPUConfig, numNodes int) func(*gene
 		spec.Containers = []corev1.Container{
 			{
 				Name:           ctx.Workspace.Name,
-				Image:          GetBaseImageName(),
+				Image:          imageName,
 				Command:        commands,
 				Resources:      resourceReq,
 				Ports:          containerPorts,

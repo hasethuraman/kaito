@@ -1,7 +1,7 @@
 # Dependencies for TFS
 
 # Core Dependencies
-vllm==0.12.0
+vllm @ git+https://github.com/hasethuraman/vllm.git@hari/add-azure-vllm
 transformers >= 4.56.0, < 5
 torch==2.9.0
 accelerate==1.3.0

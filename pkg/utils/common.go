@@ -40,7 +40,7 @@ import (
 )
 
 const (
-	errInvalidModelVersionURL = "invalid model version URL: %s. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>"
+	errInvalidModelVersionURL = "invalid model version URL: %s. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>"
 )
 
 var (
@@ -284,7 +284,7 @@ func SelectNodes(qualified []*corev1.Node, preferred []string, previous []string
 }
 
 // ParseHuggingFaceModelVersion parses the model version in the format of https://huggingface.co/<org>/<model>/commit/<revision>
-// and returns the repoId and revision. If the commit is not specified, it returns an empty string for revision,
+// or azure://<org>/<model> and returns the repoId and revision. If the commit is not specified, it returns an empty string for revision,
 // and the main branch HEAD commit is used.
 //
 // Example 1:
@@ -298,10 +298,37 @@ func SelectNodes(qualified []*corev1.Node, preferred []string, previous []string
 //	Version: https://huggingface.co/tiiuae/falcon-7b
 //	RepoId: "tiiuae/falcon-7b"
 //	Revision: "" (main branch HEAD commit is used)
+//
+// Example 3:
+//
+//	Version: azure://Qwen/Qwen2.5-Coder-7B-Instruct
+//	RepoId: "Qwen/Qwen2.5-Coder-7B-Instruct"
+//	Revision: "" (main branch HEAD commit is used)
 func ParseHuggingFaceModelVersion(version string) (repoId string, revision string, err error) {
 	parsedURL, err := url.Parse(version)
 	if err != nil {
 		return "", "", err
+	}
+
+	// Handle azure:// scheme for Azure-hosted models
+	if parsedURL.Scheme == "az" {
+		parts := strings.Split(strings.Trim(parsedURL.Path, "/"), "/")
+		if parsedURL.Host != "" {
+			// Handle azure://org/model format
+			parts = append([]string{parsedURL.Host}, parts...)
+		}
+		// Filter out empty strings from parts
+		var validParts []string
+		for _, part := range parts {
+			if part != "" {
+				validParts = append(validParts, part)
+			}
+		}
+		if len(validParts) == 2 {
+			repoId, revision = validParts[0]+"/"+validParts[1], ""
+			return
+		}
+		return "", "", fmt.Errorf(errInvalidModelVersionURL, version)
 	}
 
 	if parsedURL.Host != "huggingface.co" {

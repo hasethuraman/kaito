@@ -28,6 +28,9 @@ const (
 	DefaultVLLMMultiNodeHealthCheckCommand = "python3 /workspace/vllm/multi-node-health-check.py"
 	DefaultVLLMCommand                     = "python3 /workspace/vllm/inference_api.py"
 	DefaultTransformersMainFile            = "/workspace/tfs/inference_api.py"
+
+	VLLMLoadFormatAuto          = "auto"
+	VLLMLoadFormatRunAiStreamer = "runai_streamer"
 )
 
 var (

@@ -88,6 +88,11 @@ type Metadata struct {
 	// +optional
 	DownloadAuthRequired bool `yaml:"downloadAuthRequired,omitempty"`
 
+	// LoadFormat specifies the format to load the model weights for vLLM.
+	// Valid values are "auto" (default), "safetensors", "pt", "runai-streamer", etc.
+	// +optional
+	LoadFormat string `yaml:"loadFormat,omitempty"`
+
 	// Tag is the tag of the container image used to run the model.
 	// If the model uses the KAITO base image, the tag field can be ignored
 	// +optional
@@ -284,16 +289,27 @@ func (p *PresetParam) buildVLLMInferenceCommand(rc RuntimeContext) []string {
 		p.VLLM.ModelRunParams["enable-lora"] = ""
 	}
 	if p.DownloadAtRuntime {
-		repoId, revision, _ := utils.ParseHuggingFaceModelVersion(p.Version)
-		p.VLLM.ModelRunParams["model"] = repoId
-		if revision != "" {
-			p.VLLM.ModelRunParams["code-revision"] = revision
+		if strings.HasSuffix(p.VLLM.ModelName, "-azure") {
+			p.VLLM.ModelRunParams["model"] = p.Version
+		} else {
+			repoId, revision, _ := utils.ParseHuggingFaceModelVersion(p.Version)
+			p.VLLM.ModelRunParams["model"] = repoId
+			if revision != "" {
+				p.VLLM.ModelRunParams["code-revision"] = revision
+			}
 		}
 		p.VLLM.ModelRunParams["download-dir"] = utils.DefaultWeightsVolumePath
 	}
 	if rc.ConfigVolume != nil {
 		p.VLLM.ModelRunParams["kaito-config-file"] = path.Join(rc.ConfigVolume.MountPath, ConfigfileNameVLLM)
 	}
+
+	// Apply LoadFormat from PresetParam if specified, default to "auto"
+	loadFormat := p.LoadFormat
+	if loadFormat == "" {
+		loadFormat = "auto"
+	}
+	p.VLLM.ModelRunParams["load-format"] = loadFormat
 
 	// If user wants to deploy a model that supports distributed inference, but
 	// there is only one node, we don't need to setup a multi-node Ray cluster.

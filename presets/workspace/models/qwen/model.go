@@ -28,14 +28,19 @@ func init() {
 		Instance: &qwen2_5coder7bInst,
 	})
 	plugin.KaitoModelRegister.Register(&plugin.Registration{
+		Name:     PresetQwen2_5Coder7BInstructModelInAzure,
+		Instance: &qwen2_5coder7bInstAzure,
+	})
+	plugin.KaitoModelRegister.Register(&plugin.Registration{
 		Name:     PresetQwen2_5Coder32BInstructModel,
 		Instance: &qwen2_5coder32bInst,
 	})
 }
 
 const (
-	PresetQwen2_5Coder7BInstructModel  = "qwen2.5-coder-7b-instruct"
-	PresetQwen2_5Coder32BInstructModel = "qwen2.5-coder-32b-instruct"
+	PresetQwen2_5Coder7BInstructModel        = "qwen2.5-coder-7b-instruct"
+	PresetQwen2_5Coder7BInstructModelInAzure = "qwen2.5-coder-7b-instruct-azure"
+	PresetQwen2_5Coder32BInstructModel       = "qwen2.5-coder-32b-instruct"
 )
 
 var (
@@ -103,6 +108,59 @@ func (*qwen2_5Coder7BInstruct) SupportDistributedInference() bool {
 	return false
 }
 func (*qwen2_5Coder7BInstruct) SupportTuning() bool {
+	return true
+}
+
+var qwen2_5coder7bInstAzure qwen2_5Coder7BInstructAzure
+
+type qwen2_5Coder7BInstructAzure struct{}
+
+func (*qwen2_5Coder7BInstructAzure) GetInferenceParameters() *model.PresetParam {
+	return &model.PresetParam{
+		Metadata:                metadata.MustGet(PresetQwen2_5Coder7BInstructModelInAzure),
+		DiskStorageRequirement:  "110Gi",
+		GPUCountRequirement:     "1",
+		TotalSafeTensorFileSize: "14.19Gi",
+		BytesPerToken:           57344,
+		ModelTokenLimit:         32768, // max_position_embeddings from HF config
+		RuntimeParam: model.RuntimeParam{
+			Transformers: model.HuggingfaceTransformersParam{
+				AccelerateParams:  inference.DefaultAccelerateParams,
+				ModelRunParams:    qwenRunParams,
+				BaseCommand:       baseCommandPresetQwenInference,
+				InferenceMainFile: inference.DefaultTransformersMainFile,
+			},
+			VLLM: model.VLLMParam{
+				BaseCommand:    inference.DefaultVLLMCommand,
+				ModelName:      PresetQwen2_5Coder7BInstructModelInAzure,
+				ModelRunParams: qwenRunParamsVLLM,
+			},
+		},
+		ReadinessTimeout: time.Duration(30) * time.Minute,
+	}
+}
+
+func (*qwen2_5Coder7BInstructAzure) GetTuningParameters() *model.PresetParam {
+	return &model.PresetParam{
+		Metadata:                metadata.MustGet(PresetQwen2_5Coder7BInstructModelInAzure),
+		DiskStorageRequirement:  "110Gi",
+		GPUCountRequirement:     "1",
+		TotalSafeTensorFileSize: "24Gi",
+		RuntimeParam: model.RuntimeParam{
+			Transformers: model.HuggingfaceTransformersParam{
+				// AccelerateParams: tuning.DefaultAccelerateParams,
+				// ModelRunParams:   qwenRunParams,
+				BaseCommand: baseCommandPresetQwenTuning,
+			},
+		},
+		ReadinessTimeout: time.Duration(30) * time.Minute,
+	}
+}
+
+func (*qwen2_5Coder7BInstructAzure) SupportDistributedInference() bool {
+	return false
+}
+func (*qwen2_5Coder7BInstructAzure) SupportTuning() bool {
 	return true
 }
 

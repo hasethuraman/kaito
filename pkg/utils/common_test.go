@@ -54,19 +54,19 @@ func TestParseHuggingFaceModelVersion(t *testing.T) {
 			name:           "Invalid URL path structure - too few parts",
 			version:        "https://huggingface.co/tiiuae",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>",
+			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
 		},
 		{
 			name:           "Invalid URL path structure - incorrect middle part",
 			version:        "https://huggingface.co/tiiuae/falcon-7b/blob/main",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae/falcon-7b/blob/main. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>",
+			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae/falcon-7b/blob/main. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
 		},
 		{
 			name:           "Invalid URL path structure - too many parts",
 			version:        "https://huggingface.co/tiiuae/falcon-7b/commit/rev/extra",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae/falcon-7b/commit/rev/extra. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>",
+			expectedErrMsg: "invalid model version URL: https://huggingface.co/tiiuae/falcon-7b/commit/rev/extra. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
 		},
 		{
 			name:           "Invalid URL format - parsing error",
@@ -92,25 +92,44 @@ func TestParseHuggingFaceModelVersion(t *testing.T) {
 			name:           "Invalid host",
 			version:        "https://github.com/org/model",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://github.com/org/model. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>",
+			expectedErrMsg: "invalid model version URL: https://github.com/org/model. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
 		},
 		{
 			name:           "Empty input string",
 			version:        "",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: . Expected format: https://huggingface.co/<org>/<model>/commit/<revision>", // url.Parse("") returns empty URL, host check fails
+			expectedErrMsg: "invalid model version URL: . Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>", // url.Parse("") returns empty URL, host check fails
 		},
 		{
 			name:           "URL with only host",
 			version:        "https://huggingface.co",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://huggingface.co. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>", // Path is empty, len(parts) is 0 or 1 depending on trailing slash
+			expectedErrMsg: "invalid model version URL: https://huggingface.co. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>", // Path is empty, len(parts) is 0 or 1 depending on trailing slash
 		},
 		{
 			name:           "URL with path /org/model/tree/branch",
 			version:        "https://huggingface.co/org/model/tree/branch",
 			expectErr:      true,
-			expectedErrMsg: "invalid model version URL: https://huggingface.co/org/model/tree/branch. Expected format: https://huggingface.co/<org>/<model>/commit/<revision>", // len(parts) is 4, but parts[2] is not "commit"
+			expectedErrMsg: "invalid model version URL: https://huggingface.co/org/model/tree/branch. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>", // len(parts) is 4, but parts[2] is not "commit"
+		},
+		{
+			name:             "Valid Azure URL",
+			version:          "azure://Qwen/Qwen2.5-Coder-7B-Instruct",
+			expectedRepoId:   "Qwen/Qwen2.5-Coder-7B-Instruct",
+			expectedRevision: "",
+			expectErr:        false,
+		},
+		{
+			name:           "Invalid Azure URL - missing model",
+			version:        "azure://Qwen",
+			expectErr:      true,
+			expectedErrMsg: "invalid model version URL: azure://Qwen. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
+		},
+		{
+			name:           "Invalid Azure URL - too many parts",
+			version:        "azure://Qwen/Model/Extra",
+			expectErr:      true,
+			expectedErrMsg: "invalid model version URL: azure://Qwen/Model/Extra. Expected format: azure://<org>/<model> or https://huggingface.co/<org>/<model>/commit/<revision>",
 		},
 	}
 
